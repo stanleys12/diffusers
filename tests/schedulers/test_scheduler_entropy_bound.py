@@ -54,3 +54,19 @@ class EntropyBoundSchedulerTest(unittest.TestCase):
         out = scheduler.step(logits, timestep=0, sample=sample)
         self.assertEqual(out.prev_sample.shape, sample.shape)
         self.assertEqual(out.accepted_index.shape, sample.shape)
+
+    def test_temperature_annealed_from_t_max_to_t_min(self):
+        scheduler = self.get_scheduler(t_max=0.8, t_min=0.4)
+        sample = torch.randint(0, 100, (1, 16))
+        logits = torch.randn(1, 16, 100)
+        first = scheduler.step(logits, timestep=0, sample=sample)
+        last = scheduler.step(logits, timestep=scheduler.num_inference_steps - 1, sample=sample)
+        self.assertTrue(torch.allclose(first.pred_logits, logits / 0.8))
+        self.assertTrue(torch.allclose(last.pred_logits, logits / 0.4))
+
+    def test_single_step_schedule_uses_t_min(self):
+        scheduler = self.get_scheduler(t_max=0.8, t_min=0.4, num_inference_steps=1)
+        sample = torch.randint(0, 100, (1, 16))
+        logits = torch.randn(1, 16, 100)
+        out = scheduler.step(logits, timestep=0, sample=sample)
+        self.assertTrue(torch.allclose(out.pred_logits, logits / 0.4))

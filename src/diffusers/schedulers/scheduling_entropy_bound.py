@@ -149,8 +149,9 @@ class EntropyBoundScheduler(SchedulerMixin, ConfigMixin):
             entropy_bound = float(self.config.entropy_bound)
 
         # Anneal the temperature from `t_max` to `t_min` over the schedule and scale the logits by it once, so the
-        # acceptance entropy is measured on the same distribution the candidates are drawn from.
-        fraction = (self.num_inference_steps - int(timestep)) / self.num_inference_steps
+        # acceptance entropy is measured on the same distribution the candidates are drawn from. The last timestep is
+        # `num_inference_steps - 1`, and a single-step schedule is its own last step, so it samples at `t_min`.
+        fraction = (self.num_inference_steps - 1 - int(timestep)) / max(self.num_inference_steps - 1, 1)
         temperature = self.config.t_min + (self.config.t_max - self.config.t_min) * fraction
         model_output = model_output / temperature
         sampled_tokens, sampled_probs = self._sample_from_logits(model_output, temperature=1.0, generator=generator)
